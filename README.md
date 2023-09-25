@@ -10,6 +10,8 @@
 | gnmi collector  | [gnmic](https://gnmic.openconfig.net)    | 
 | TSDB  | [Prometheus](https://prometheus.io/)    | 
 | Dashboard/UI  | [Grafana](https://grafana.com/)    | 
+| Container Infra  | [containerlab](https://containerlab.dev/)    | 
+
 
 ## Getting Started
 
@@ -117,5 +119,102 @@ In my case, my gnmi collector should be dailing in on port 57400 with insecure c
 
 
 ### 2. Deploying the gnmi collector and prometheus/grafana
+
+The tools stack are aforementioned and will use containerlab to deploy the tools. We are using DAIL-IN method, where the xpaths are set externally at gnmi collector.
+
+```
+containerlab deploy -t telemetry-sonic.clab.yml
+```
+
+SONiC does not have complete yang data model yet implemented, Hence DB, TABLE and KEY are used to identify the data uniquely.
+
+The virtual path concept is introduced for SONiC telemetry. It doesn't exist in SONiC redis database, telemetry module performs internal translation to map it to real data path and returns data accordingly.
+
+Ref: Detailed DB Tables are listed here sonic-gnmi[](https://github.com/sonic-net/sonic-gnmi/blob/master/doc/grpc_telemetry.md)
+
+**Example**
+
+Lets get the data for Port-ETHERNET-35.
+
+Ports data is stored in `COUNTER_DB` Similary the same can we used to configure in the file here `gnmic.yaml`.
+
+* xpath : path
+* xpath_target : target
+
+Using gnmiC
+
+```
+➜  telemetry gnmic -a 10.1.0.116:57400 -u admin -p password --skip-verify get --path COUNTERS/Ethernet35 --target COUNTERS_DB
+[
+  {
+    "source": "10.1.0.116:57400",
+    "timestamp": 1695604925855859308,
+    "time": "2023-09-24T21:22:05.855859308-04:00",
+    "target": "COUNTERS_DB",
+    "updates": [
+      {
+        "Path": "COUNTERS/Ethernet35",
+        "values": {
+          "COUNTERS/Ethernet35": {
+            "SAI_PORT_STAT_ETHER_IN_PKTS_1024_TO_1518_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_128_TO_255_OCTETS": "5209",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_256_TO_511_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_4096_TO_9216_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_512_TO_1023_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_64_OCTETS": "1",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_65_TO_127_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_IN_PKTS_9217_TO_16383_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_OUT_PKTS_4096_TO_9216_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_OUT_PKTS_9217_TO_16383_OCTETS": "0",
+            "SAI_PORT_STAT_ETHER_RX_OVERSIZE_PKTS": "0",
+            "SAI_PORT_STAT_ETHER_STATS_FRAGMENTS": "0",
+            "SAI_PORT_STAT_ETHER_STATS_JABBERS": "0",
+            "SAI_PORT_STAT_ETHER_STATS_TX_NO_ERRORS": "5210",
+            "SAI_PORT_STAT_ETHER_STATS_UNDERSIZE_PKTS": "0",
+            "SAI_PORT_STAT_ETHER_TX_OVERSIZE_PKTS": "0",
+            "SAI_PORT_STAT_IF_IN_BROADCAST_PKTS": "0",
+            "SAI_PORT_STAT_IF_IN_DISCARDS": "0",
+            "SAI_PORT_STAT_IF_IN_ERRORS": "0",
+            "SAI_PORT_STAT_IF_IN_MULTICAST_PKTS": "0",
+            "SAI_PORT_STAT_IF_IN_NON_UCAST_PKTS": "0",
+            "SAI_PORT_STAT_IF_IN_OCTETS": "0",
+            "SAI_PORT_STAT_IF_IN_UCAST_PKTS": "0",
+            "SAI_PORT_STAT_IF_IN_UNKNOWN_PROTOS": "0",
+            "SAI_PORT_STAT_IF_OUT_BROADCAST_PKTS": "0",
+            "SAI_PORT_STAT_IF_OUT_DISCARDS": "0",
+            "SAI_PORT_STAT_IF_OUT_ERRORS": "0",
+            "SAI_PORT_STAT_IF_OUT_MULTICAST_PKTS": "5210",
+            "SAI_PORT_STAT_IF_OUT_NON_UCAST_PKTS": "5210",
+            "SAI_PORT_STAT_IF_OUT_OCTETS": "1140326",
+            "SAI_PORT_STAT_IF_OUT_QLEN": "0",
+            "SAI_PORT_STAT_IF_OUT_UCAST_PKTS": "0",
+            "SAI_PORT_STAT_IP_IN_RECEIVES": "0",
+            "SAI_PORT_STAT_PAUSE_RX_PKTS": "0",
+            "SAI_PORT_STAT_PAUSE_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_0_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_0_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_1_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_1_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_2_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_2_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_3_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_3_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_4_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_4_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_5_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_5_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_6_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_6_TX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_7_RX_PKTS": "0",
+            "SAI_PORT_STAT_PFC_7_TX_PKTS": "0"
+          }
+        }
+      }
+    ]
+  }
+]
+```
+
+
 
 
