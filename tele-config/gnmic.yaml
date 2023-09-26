@@ -1,0 +1,31 @@
+username: admin
+password: password
+encoding: json
+skip-verify: true
+log: true
+
+targets:
+  #sonic
+  10.1.0.116:57400:
+  
+
+subscriptions:
+  sonic_port:
+    paths:
+      - "COUNTERS/Ethernet0"
+      - "COUNTERS/Ethernet33"
+      - "COUNTERS/Ethernet34"
+      - "COUNTERS/Ethernet35"
+      - "COUNTERS/Ethernet36"
+      - "COUNTERS/Ethernet37"
+    target: COUNTERS_DB
+    stream-mode: sample
+    sample-interval: 10s
+
+outputs:
+  prom-output:
+    type: prometheus
+    debug: false
+    listen: "clab-sonic-gnmic:9804"
+    service-registration:
+      address: clab-sonic-consul-agent:8500
