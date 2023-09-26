@@ -105,7 +105,11 @@ abcbd9b80db5   docker-teamd:latest               "/usr/local/bin/supe…"   2 mo
 
 **Note** 
 
-This is optional, You can change the port number and authnetication options at `/etc/sonic/config_db.json`.
+This is optional, You can change the port number and authnetication options at `/etc/sonic/config_db.json` and reload the config using the command:
+
+```
+sudo config load config_db.json
+```
 
 In my case, my gnmi collector should be dailing in on port 57400 with insecure connection.
 
@@ -179,6 +183,23 @@ Using gnmiC
   }
 ]
 ```
+
+**Note**
+
+The port mapping in the SONiC might mislead sometimes. The command `show interfaces alias` will provide mapping between the Front-Panel and the Internal Ports.
+
+In my case, I have a cable from Front-Panel labelled as 37 towards Nokia SR, Consider that as etp37, while pulling some graphs, the query should be made on `Ethernet36` port.
+
+```
+admin@sonic:~$ show interfaces alias
+Name        Alias
+----------  -------
+~ snip~~
+Ethernet36  etp37
+```
+Example using gnmic for Physical Port 37
+
+`gnmic -a 10.1.0.116:57400 sub --skip-verify --target COUNTERS_DB --path "COUNTERS/Ethernet36" --stream-mode sample --sample-interval 10s --format event`
 
 
 
