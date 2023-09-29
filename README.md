@@ -2,6 +2,8 @@
 
 [SONiC](https://github.com/sonic-net) has been implemented with gRPC for streaming telemetry. This lab will provide you steps to enable gnmi and its associated tools to stream metrics.
 
+![](sonic-topology-telemetry.png)
+
 ## Tools Used
 
 | Functions    | Tools Used | 
@@ -19,7 +21,9 @@ This guide explains enabling the streaming telemetry in 2 parts.
 
 ### 1. Enabling gnmi service at SONiC Device
 
-1. Fixing the Telemetry Container
+If the Telemetry container is up and running in your SONiC Node, you can skip this step and go directly to deploying the [telemetry-stack]().
+
+**Fixing the Telemetry Container**
 
 The SONiC device has the Telemetry container which might be in exited state, Lets fix this first.
 
@@ -103,15 +107,22 @@ abcbd9b80db5   docker-teamd:latest               "/usr/local/bin/supe…"   2 mo
 8ffd722b83d0   docker-database:latest            "/usr/local/bin/dock…"   2 months ago   Up 42 hours             database
 ``` 
 
-**Note** 
 
-This is optional, You can change the port number and authnetication options at `/etc/sonic/config_db.json` and reload the config using the command:
+### 2. Deploying the Telemetry Stack 
+
+The tools stack are aforementioned and will use containerlab to deploy the tools. We are using DAIL-IN method, where the xpaths are set externally at gnmi collector.
+
+Install [containerlab](https://containerlab.dev/install/) before proceeding.
+
+**Config at SONiC**
+
+Make sure the config for gnmi is already configured at SONiC. You can change the port number and authnetication options at `/etc/sonic/config_db.json` and reload the config using the command:
 
 ```
 sudo config load config_db.json
 ```
 
-In my case, my gnmi collector should be dailing in on port 57400 with insecure connection.
+For example in my case, my gnmi collector would be dailing  on port 57400 with insecure connection.
 
 ```
  "gnmi": {
@@ -121,14 +132,18 @@ In my case, my gnmi collector should be dailing in on port 57400 with insecure c
         }
 ```
 
+**Deploy the Telemetry Stack**
 
-### 2. Deploying the gnmi collector and prometheus/grafana
+Make sure you have cloned this repo.
 
-The tools stack are aforementioned and will use containerlab to deploy the tools. We are using DAIL-IN method, where the xpaths are set externally at gnmi collector.
-
+```
+git clone https://github.com/mfzhsn/sonic-telemetry.git && cd sonic-telemetry
+```
 ```
 containerlab deploy -t telemetry-sonic.clab.yml
 ```
+
+This file will deploy all the neccessary tools.
 
 SONiC does not have complete yang data model yet implemented, Hence DB, TABLE and KEY are used to identify the data uniquely.
 
@@ -145,7 +160,7 @@ Ports data is stored in `COUNTER_DB` Similary the same can we used to configure 
 * xpath : path
 * xpath_target : target
 
-Using gnmiC
+Using [gnmiC](https://gnmic.openconfig.net/)
 
 ```
 ➜  telemetry gnmic -a 10.1.0.116:57400 -u admin -p password --skip-verify get --path COUNTERS/Ethernet35 --target COUNTERS_DB
@@ -200,6 +215,7 @@ Ethernet36  etp37
 Example using gnmic for Physical Port 37
 
 `gnmic -a 10.1.0.116:57400 sub --skip-verify --target COUNTERS_DB --path "COUNTERS/Ethernet36" --stream-mode sample --sample-interval 10s --format event`
+
 
 
 
