@@ -1,15 +1,74 @@
-username: admin
-password: password
-encoding: json
 skip-verify: true
 log: true
 
 targets:
   #sonic
   10.1.0.116:57400:
+    username: admin
+    password: password
+    encoding: json
+    subscriptions:
+      - sonic_port
+
+  #srlinux
+  10.1.0.201:57400:
+    username: admin
+    password: nok1a!
+    encoding: json_ietf
+    subscriptions:
+      - srl_if_oper_state
+      - srl_if_stats
+      - srl_if_traffic_rate
+      - srl_apps
+      - srl_cpu
+      - srl_mem
+      
+subscriptions:
+  #################### Nokia SRLinux Subscriptions ####################
+  srl_if_oper_state:
+    paths:
+      - /interface[name=ethernet-1/*]/oper-state
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+  
+  srl_if_stats:
+    paths:
+      - /interface[name=ethernet-1/*]/statistics
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+
+  srl_if_traffic_rate:
+    paths:
+      - /interface[name=ethernet-1/*]/traffic-rate
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+
+  srl_apps:
+    paths:
+      - /system/app-management/application[name=*]
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+  
+  srl_cpu:
+    paths:
+      - /platform/control[slot=*]/cpu[index=all]/total
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+  
+  srl_mem:
+    paths:
+      - /platform/control[slot=*]/memory
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
   
 
-subscriptions:
+  #################### SONiC Subscriptions ####################
   sonic_port:
     paths:
       - "COUNTERS/Ethernet0"
@@ -22,10 +81,45 @@ subscriptions:
     stream-mode: sample
     sample-interval: 10s
 
+  # config_details:
+  #   paths:
+  #     - "BGP_NEIGHBOR"
+  #     - "BGP_DEVICE_GLOBAL"
+  #     - "BGP_MONITORS"
+  #   target: CONFIG_DB
+  #   stream-mode: sample
+  #   sample-interval: 10s
+
+  # state_info:
+  #   paths:
+  #     - "BGP_STATE_TABLE"
+  #     # - "INTERFACE_TABLE"
+  #     # - "ROUTE_TABLE"
+  #   target: STATE_DB
+  #   stream-mode: sample
+  #   sample-interval: 10s
+
 outputs:
-  prom-output:
+  prom:
     type: prometheus
+    listen: :9273
+    path: /metrics
     debug: false
-    listen: "clab-sonic-gnmic:9804"
-    service-registration:
-      address: clab-sonic-consul-agent:8500
+    strings-as-labels: true
+    event-processors:
+      - up-down-map
+
+processors:
+  up-down-map:
+    event-strings:
+      value-names:
+        - oper-state
+      transforms:
+        - replace:
+            apply-on: "value"
+            old: "up"
+            new: "1"
+        - replace:
+            apply-on: "value"
+            old: "down"
+            new: "0"
