@@ -4,6 +4,15 @@
 
 ![](sonic-topology-telemetry.png)
 
+- [Installation](#installation)
+	- [Adding Target Nodes](#adding-target-nodes)
+	- [Enabling additional metrics](#enabling-additional-metrics)
+- [Fixing the Telemetry Service at SONiC](#telemetry-service-at-sonic)
+	- [gnmi configuration at SONiC](#gnmi-configuations-at-sonic)
+- [gnmiC Example](#gnmic-command-line-utility)
+ 
+
+
 ## Tools Used
 
 | Functions    | Tools Used | 
@@ -14,18 +23,96 @@
 | Dashboard/UI  | [Grafana](https://grafana.com/)    | 
 | Container Infra  | [containerlab](https://containerlab.dev/)    | 
 
+## Installation
 
-## Getting Started
+The tools stack are aforementioned and will use containerlab to deploy the tools. We are using DAIL-IN method, where the xpaths are set externally from gnmi collector.
 
-This guide explains enabling the streaming telemetry in 2 parts.
+Install [containerlab](https://containerlab.dev/install/) at your host machine/telemetry host (not at SONiC) before proceeding.
 
-### 1. Enabling gnmi service at SONiC Device
+Note: At SONiC Node, Make sure the Telemetry container is up and running else fix the container with the instructions given below
 
-If the Telemetry container is up and running in your SONiC Node, you can skip this step and go directly to deploying the [telemetry-stack]().
+**Deploy the Telemetry Stack**
+
+1. Clone the repo
+
+```
+git clone https://github.com/mfzhsn/sonic-telemetry.git && cd sonic-telemetry
+```
+
+2. Deploy the stack
+ 
+```
+containerlab deploy -t telemetry-sonic.clab.yml
+```
+The above will pull all required images from the public repo (need internet connection), connect the application and configures them.
+
+SONiC does not have complete yang data model yet implemented, Hence DB, TABLE and KEY are used to identify the data uniquely.
+
+The virtual path concept is introduced for SONiC telemetry. It doesn't exist in SONiC redis database, telemetry module performs internal translation to map it to real data path and returns data accordingly.
+
+## Adding Target Nodes
+
+gnmiC is the client which dails-in to subscribe to various xpaths/virtual-paths to collect metrics. The gnmic config located at `tele-config/gnmic.yaml`.
+
+Example:
+
+```
+targets:
+  #sonic
+  10.1.0.116:57400:
+    username: admin
+    password: password
+    encoding: json
+    subscriptions:
+      - sonic_port
+
+  #srlinux
+  10.1.0.201:57400:
+    username: admin
+    password: nok1a!
+    encoding: json_ietf
+    subscriptions:
+      - srl_if_oper_state
+      - srl_if_stats
+      - srl_if_traffic_rate
+      - srl_apps
+      - srl_cpu
+      - srl_mem
+      
+  # any other node
+  xx.xx.xx.xx:gnmi_port
+```
+
+Once updated the new target, you can restart the gnmic container `docker restart clab-sonic-gnmic` or also redeploy the stack using `containerlab deploy -t telemetry-sonic.clab.yml --reconfigure`.
+
+## Enabling additional metrics
+
+gnmiC dails-in on specific yang paths also called as xpaths or virtual-paths(SONiC). gnmiC needs to be configured with the appropriate paths.
+
+Example:
+
+```
+subscriptions:
+  srl_if_oper_state:
+    paths:
+      - /interface[name=ethernet-1/*]/oper-state
+    mode: stream
+    stream-mode: sample
+    sample-interval: 10s
+```
+
+The above subscription `srl_if_oper_state` needs to be listed under the appropriate target node.
+
+
+
+
+## Telemetry Service at SONiC
+
+If the Telemetry container is up and running in your SONiC Node, you can skip this step and go directly to Installation.
 
 **Fixing the Telemetry Container**
 
-The SONiC device has the Telemetry container which might be in exited state, Lets fix this first.
+The SONiC device has the Telemetry container which might be in `exited` state, Lets fix this first.
 
 ```
 admin@sonic:~$ docker ps --all
@@ -44,12 +131,7 @@ abcbd9b80db5   docker-teamd:latest               "/usr/local/bin/supe…"   2 mo
 8ffd722b83d0   docker-database:latest            "/usr/local/bin/dock…"   2 months ago   Up 42 hours             database
 ```
 
-You can check telemetry logs at `/var/log/telemetry.log`, you can will that it is expecting certificates.
-
-
-a. Generate Certs
-
-SONiC will have baseline configurations for Telemetry/gnmi, and it will check for certs in the below path. Configurations can be checked either by running `show runningconfiguration all` or `cat /etc/sonic/config_db.json`
+You can check telemetry logs at `/var/log/telemetry.log`. SONiC will have baseline configurations for Telemetry/gnmi, and it will check for certs in the below path. Configurations can be checked either by running `show runningconfiguration all` or `cat /etc/sonic/config_db.json`
 
 ```
     "TELEMETRY": {
@@ -61,7 +143,7 @@ SONiC will have baseline configurations for Telemetry/gnmi, and it will check fo
 ``` 
 **Generate certs**
 
-b. Create a directory called `telemetry`
+a. Create a directory called `telemetry`
 
 ```
 mkdir /etc/sonic/telemetry
@@ -69,17 +151,17 @@ mkdir /etc/sonic/telemetry
 Certificate
 
 ```
-sudo openssl req -x509 -newkey rsa:4096 -keyout /etc/sonic/telemetry/dsmsroot.key   -out /etc/sonic/telemetry/dsmsroot.cer -sha256 -days 365 -nodes -subj '/CN=sonic-lab'
+sudo openssl req -x509 -newkey rsa:4096 -keyout /etc/sonic/telemetry/dsmsroot.key -out /etc/sonic/telemetry/dsmsroot.cer -sha256 -days 365 -nodes -subj '/CN=sonic-lab'
 ```
 CSR
 
 ```
-sudo openssl req -new -newkey rsa:4096 -nodes   -keyout /etc/sonic/telemetry/streamingtelemetryserver.key -out /etc/sonic/telemetry/streamingtelemetryserver.csr   -subj "/CN=sonic-lab"
+sudo openssl req -new -newkey rsa:4096 -nodes -keyout /etc/sonic/telemetry/streamingtelemetryserver.key -out /etc/sonic/telemetry/streamingtelemetryserver.csr -subj "/CN=sonic-lab"
 ```
 Key
 
 ```
-sudo openssl x509 -req -in /etc/sonic/telemetry/streamingtelemetryserver.csr   -CA /etc/sonic/telemetry/dsmsroot.cer -CAkey /etc/sonic/telemetry/dsmsroot.key   -CAcreateserial -out /etc/sonic/telemetry/streamingtelemetryserver.cer   -days 365 -sha512
+sudo openssl x509 -req -in /etc/sonic/telemetry/streamingtelemetryserver.csr -CA /etc/sonic/telemetry/dsmsroot.cer -CAkey /etc/sonic/telemetry/dsmsroot.key -CAcreateserial -out /etc/sonic/telemetry/streamingtelemetryserver.cer -days 365 -sha512
 ```
 
 Restart the telemetry container
@@ -107,14 +189,7 @@ abcbd9b80db5   docker-teamd:latest               "/usr/local/bin/supe…"   2 mo
 8ffd722b83d0   docker-database:latest            "/usr/local/bin/dock…"   2 months ago   Up 42 hours             database
 ``` 
 
-
-### 2. Deploying the Telemetry Stack 
-
-The tools stack are aforementioned and will use containerlab to deploy the tools. We are using DAIL-IN method, where the xpaths are set externally at gnmi collector.
-
-Install [containerlab](https://containerlab.dev/install/) before proceeding.
-
-**Config at SONiC**
+## gnmi Configuations at SONiC
 
 Make sure the config for gnmi is already configured at SONiC. You can change the port number and authnetication options at `/etc/sonic/config_db.json` and reload the config using the command:
 
@@ -132,26 +207,7 @@ For example in my case, my gnmi collector would be dailing  on port 57400 with i
         }
 ```
 
-**Deploy the Telemetry Stack**
-
-Make sure you have cloned this repo.
-
-```
-git clone https://github.com/mfzhsn/sonic-telemetry.git && cd sonic-telemetry
-```
-```
-containerlab deploy -t telemetry-sonic.clab.yml
-```
-
-This file will deploy all the neccessary tools.
-
-SONiC does not have complete yang data model yet implemented, Hence DB, TABLE and KEY are used to identify the data uniquely.
-
-The virtual path concept is introduced for SONiC telemetry. It doesn't exist in SONiC redis database, telemetry module performs internal translation to map it to real data path and returns data accordingly.
-
-Ref: Detailed DB Tables are listed here sonic-gnmi[](https://github.com/sonic-net/sonic-gnmi/blob/master/doc/grpc_telemetry.md)
-
-**Example**
+## gnmiC Command Line Utility
 
 Lets get the data for Port-ETHERNET-35.
 
@@ -215,8 +271,4 @@ Ethernet36  etp37
 Example using gnmic for Physical Port 37
 
 `gnmic -a 10.1.0.116:57400 sub --skip-verify --target COUNTERS_DB --path "COUNTERS/Ethernet36" --stream-mode sample --sample-interval 10s --format event`
-
-
-
-
 
