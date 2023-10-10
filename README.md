@@ -54,6 +54,9 @@ The virtual path concept is introduced for SONiC telemetry. It doesn't exist in 
 
 gnmiC is the client which dails-in to subscribe to various xpaths/virtual-paths to collect metrics. The gnmic config located at `tele-config/gnmic.yaml`.
 
+
+*Note:* Adjust the target IP address with your environments/node`s IP, Username, Password and subscription information.
+  
 Example:
 
 ```
@@ -89,6 +92,8 @@ Once updated the new target, you can restart the gnmic container `docker restart
 
 gnmiC dails-in on specific yang paths also called as xpaths or virtual-paths(SONiC). gnmiC needs to be configured with the appropriate paths.
 
+*Note:* Add or Update with your nodes`s xpath for gnmiC to collect metrics.
+
 Example:
 
 ```
@@ -99,9 +104,19 @@ subscriptions:
     mode: stream
     stream-mode: sample
     sample-interval: 10s
+
+
+  sonic_port:
+    paths:
+      - "COUNTERS/Ethernet0"
+      - "COUNTERS/Ethernet1"
+      - "COUNTERS/Ethernet32"
+    target: COUNTERS_DB
+    stream-mode: sample
+    sample-interval: 10s
 ```
 
-The above subscription `srl_if_oper_state` needs to be listed under the appropriate target node.
+The above subscription `srl_if_oper_state` and `sonic_port` needs to be listed under the respective target nodes.
 
 
 
