@@ -289,6 +289,7 @@ Example using gnmic for Physical Port 37
 
 
 ## Newer Versions of SONiC has a different method to enable Telemetry
+The newer versions of SONiC do not have `Telemetry` container anymore, instead it has been replaced with `gnmi` container.
 
 Step-1: Check if the gnmi container is running
 
