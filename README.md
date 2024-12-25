@@ -10,7 +10,7 @@
 - [Fixing the Telemetry Service at SONiC](#telemetry-service-at-sonic)
 	- [gnmi configuration at SONiC](#gnmi-configuations-at-sonic)
 - [gnmiC Example](#gnmic-command-line-utility)
-- [New Versions of SONiC with gnmi container](##Newer-Versions-of-SONiC-has-a-different-method-to-enable-Telemetry)
+- [New Versions of SONiC with gnmi container](#Newer-Versions-of-SONiC-has-a-different-method-to-enable-Telemetry)
 
 
 ## Tools Used
@@ -295,14 +295,12 @@ Step-1: Check if the gnmi container is running
 
 ```
 docker ps | grep gnmi
-
 ```
 
 Step-2: Start the gnmi service if not running
 
 ```
 sudo systemctl start gnmi.service
-
 ```
 Verify
 
