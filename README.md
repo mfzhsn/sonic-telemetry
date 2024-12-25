@@ -10,7 +10,7 @@
 - [Fixing the Telemetry Service at SONiC](#telemetry-service-at-sonic)
 	- [gnmi configuration at SONiC](#gnmi-configuations-at-sonic)
 - [gnmiC Example](#gnmic-command-line-utility)
- 
+- [New Versions of SONiC with gnmi container](##Newer-Versions-of-SONiC-has-a-different-method-to-enable-Telemetry)
 
 
 ## Tools Used
@@ -287,3 +287,73 @@ Example using gnmic for Physical Port 37
 
 `gnmic -a 10.1.0.116:57400 sub --skip-verify --target COUNTERS_DB --path "COUNTERS/Ethernet36" --stream-mode sample --sample-interval 10s --format event`
 
+
+## Newer Versions of SONiC has a different method to enable Telemetry
+
+Step-1: Check if the gnmi container is running
+
+```
+docker ps | grep gnmi
+
+```
+
+Step-2: Start the gnmi service if not running
+
+```
+sudo systemctl start gnmi.service
+
+```
+Verify
+
+```
+admin@sonic:~$ sudo systemctl status gnmi.service
+● gnmi.service - GNMI container
+     Loaded: loaded (/lib/systemd/system/gnmi.service; static)
+    Drop-In: /etc/systemd/system/gnmi.service.d
+             └─auto_restart.conf
+     Active: active (running) since Wed 2024-12-25 04:54:39 UTC; 49min ago
+    Process: 52936 ExecStartPre=/usr/local/bin/gnmi.sh start (code=exited, status=0/SUCCESS)
+   Main PID: 52963 (gnmi.sh)
+      Tasks: 3 (limit: 4571)
+     Memory: 29.1M
+     CGroup: /system.slice/gnmi.service
+             ├─52963 /bin/bash /usr/local/bin/gnmi.sh wait
+             ├─52965 /bin/bash /usr/bin/gnmi.sh wait
+             └─52966 python3 /usr/local/bin/container wait gnmi
+
+Dec 25 04:54:39 sonic container[52952]: container_start: gnmi: set_owner:local fallback:True remote_state:none server_connected:false
+Dec 25 04:54:39 sonic container[52952]: docker cmd: start for gnmi
+Dec 25 04:54:39 sonic container[52952]: container_start: END
+Dec 25 04:54:39 sonic systemd[1]: Started gnmi.service - GNMI container.
+Dec 25 04:54:39 sonic container[52966]: container_wait: BEGIN
+Dec 25 04:54:39 sonic container[52966]: read_data: config:True feature:gnmi fields:[('set_owner', 'local'), ('no_fallback_to_local', False), ('state', 'disabled')] val:['local', False, 'enabled']
+Dec 25 04:54:39 sonic container[52966]: read_data: config:False feature:gnmi fields:[('current_owner', 'none'), ('remote_state', 'none'), ('container_id', '')] val:['none', 'none', '']
+Dec 25 04:54:39 sonic container[52966]: docker get image version for gnmi
+Dec 25 04:54:39 sonic container[52966]: container_wait: gnmi: set_owner:local ct_owner:none state:none id:gnmi pend=0
+Dec 25 04:54:39 sonic container[52966]: container_wait: END -- transitioning to docker wait
+```
+
+Step-3: Enable the gnmi feature
+
+```
+sudo config feature state gnmi enabled
+```
+
+Step-4: Restart the service
+
+```
+sudo systemctl restart gnmi.service
+```
+
+Verify, in the newer version the gnmi is running on port `8080`
+
+```
+sudo netstat -tuln | grep 8080
+```
+
+Output:
+
+```
+admin@sonic:~$ sudo netstat -peanut | grep 8080
+tcp6       0      0 :::8080                 :::*                    LISTEN      0          599818     57957/telemetry
+```
